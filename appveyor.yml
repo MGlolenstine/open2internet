@@ -29,7 +29,7 @@ build_script:
 after_build:
   - cmd: after_build.bat
 artifacts:
-  - path: nvim-gtk-mingw64.7z
+  - path: open2internet-mingw64.7z
     name: mingw64-bin
 
 test: false
