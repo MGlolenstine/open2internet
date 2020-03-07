@@ -1,13 +1,18 @@
 #![allow(dead_code)]
 
-use port_scanner::scan_ports_range;
+use port_scanner::{local_ports_available_range, scan_port};
 use std::io::prelude::*;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream, SocketAddrV4};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
 use std::time::Duration;
 // use natpmp::*;
-use igd::{search_gateway};
 use get_if_addrs::get_if_addrs;
+use igd::search_gateway;
 // use std::sync::{Arc, Mutex};
+use std::collections::HashSet;
+use std::iter::FromIterator;
+use std::ops::Range;
+use std::sync::mpsc::channel;
+use std::thread;
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 const WANTED_PORT: u16 = 25565;
@@ -15,7 +20,7 @@ const WANTED_PORT: u16 = 25565;
 /*
     Get host's local IP.
 */
-pub fn get_local_ip() -> Option<Ipv4Addr>{
+pub fn get_local_ip() -> Option<Ipv4Addr> {
     for iface in get_if_addrs().unwrap() {
         let ip = iface.ip().to_string();
         /*
@@ -24,40 +29,70 @@ pub fn get_local_ip() -> Option<Ipv4Addr>{
         */
         if !iface.is_loopback() && iface.ip().is_ipv4() && !ip.starts_with("172.") {
             let splot = ip.split(".").collect::<Vec<&str>>();
-            return Some(Ipv4Addr::new(splot[0].parse::<u8>().unwrap(), splot[1].parse::<u8>().unwrap(), splot[2].parse::<u8>().unwrap(), splot[3].parse::<u8>().unwrap()));
+            return Some(Ipv4Addr::new(
+                splot[0].parse::<u8>().unwrap(),
+                splot[1].parse::<u8>().unwrap(),
+                splot[2].parse::<u8>().unwrap(),
+                splot[3].parse::<u8>().unwrap(),
+            ));
             // return Some(iface.ip());
         }
     }
     return None;
 }
+
 /*
     Scan ports in Minecraft range, to find the Minecraft one.
 */
-pub fn scan_ports() -> Vec<u16>{
+pub fn scan_ports() -> Vec<u16> {
     let mut vec: Vec<u16> = Vec::new();
     let all_ports = 10000..65535;
-    let free_ports = scan_ports_range(10000..65535);
-    let taken_ports = all_ports.into_iter().filter(|&i| free_ports.contains(&i));
-    // println!("{:#?}", get_public_address().unwrap());
-    for open_port in taken_ports {
-        // let port = Mutex::new(open_port);
-        // let new_port_response = tokio::spawn(async {
-            if is_minecraft(/* *port.lock().unwrap()).await*/open_port) {
-                // redirect_minecraft_to_a_port(open_port, WANTED_PORT);
-                // println!("Your Minecraft is running on port {}!", open_port);
-                vec.push(open_port)
-            //     Some(*port.lock().unwrap() as u16)
-            // }else{
-            //     None
-            }
-        // }).await;
-        // let err = new_port_response.is_err();
-        // let new_port_option = new_port_response.unwrap();
-        // if !err && new_port_option.is_some() {
-        //     vec.push(new_port_option.unwrap());
-        // }
+    let free_ports = HashSet::<u16>::from_iter(
+        local_ports_available_range(all_ports.clone())
+            .iter()
+            .cloned(),
+    );
+    let taken_ports: Vec<u16> = all_ports.filter(|&i| !free_ports.contains(&i)).collect();
+    let (sender, receiver) = channel();
+    for open_port in taken_ports.clone() {
+        let local_sender = sender.clone();
+        thread::spawn(move || {
+            local_sender
+                .send(if is_minecraft(open_port) {
+                    Some(open_port)
+                } else {
+                    None
+                })
+                .unwrap()
+        });
+    }
+    for _ in &taken_ports {
+        let rec = receiver.recv().unwrap();
+        if rec.is_some() {
+            vec.push(rec.unwrap());
+        }
     }
     return vec;
+}
+
+pub fn scan_ports_range(port_range: Range<u16>) -> Vec<u16> {
+    let mut open_ports = Vec::new();
+    let (sender, receiver) = channel();
+    for port in port_range.clone() {
+        let local_sender = sender.clone();
+        thread::spawn(move || {
+            local_sender
+                .send(if scan_port(port) { Some(port) } else { None })
+                .unwrap();
+        });
+    }
+    for _ in port_range {
+        let rec = receiver.recv().unwrap();
+        if rec.is_some() {
+            open_ports.push(rec.unwrap());
+        }
+    }
+    open_ports
 }
 
 /*
@@ -72,7 +107,9 @@ pub fn is_minecraft(port: u16) -> bool {
         return false;
     }
     let mut stream = stream.unwrap();
-    stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
     let req = [0xFE, 0x01];
     stream.write(&req).unwrap();
     let mut resp = [0u8; 18];
@@ -82,7 +119,7 @@ pub fn is_minecraft(port: u16) -> bool {
     let buf_len = stream.read(&mut resp);
     if buf_len.is_err() {
         return false;
-    } 
+    }
     if is_minecraft_response(&resp) {
         return true;
     }
@@ -108,9 +145,11 @@ pub fn is_minecraft_response(buffer: &[u8]) -> bool {
             ...
         ]
     */
-    let mc_server = [255, 0, 42, 0, 167, 0, 49, 0, 0, 0, 49, 0, 50, 0, 55, 0, 0, 0];
+    let mc_server = [
+        255, 0, 42, 0, 167, 0, 49, 0, 0, 0, 49, 0, 50, 0, 55, 0, 0, 0,
+    ];
     for i in 0..buffer.len() {
-        if i == 2{
+        if i == 2 {
             continue;
         }
         let c = buffer[i];
@@ -141,7 +180,13 @@ pub fn redirect_minecraft_to_a_port(mc_port: u16, wanted_port: u16, lease: u32) 
     match igd::search_gateway(Default::default()) {
         Err(ref err) => println!("Error: {}", err),
         Ok(gateway) => {
-            match gateway.add_port(igd::PortMappingProtocol::TCP, wanted_port, local_addr.into(), lease, "Minecraft client PortForward") {
+            match gateway.add_port(
+                igd::PortMappingProtocol::TCP,
+                wanted_port,
+                local_addr.into(),
+                lease,
+                "Minecraft client PortForward",
+            ) {
                 Err(ref err) => {
                     println!("There was an error! {}", err);
                 }

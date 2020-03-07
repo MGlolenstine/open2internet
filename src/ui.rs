@@ -3,7 +3,7 @@ use crate::utils::*;
 use glib::types::StaticType;
 use gtk::prelude::GtkListStoreExtManual;
 use gtk::{
-    Align, ButtonExt, CellLayoutExt, EditableExt, Inhibit, Justification, LabelExt,
+    Align, ButtonExt, CellLayoutExt, EditableExt, GtkWindowExt, Inhibit, Justification, LabelExt,
     OrientableExt, Orientation::*, SpinButtonExt, TreeViewExt, WidgetExt, TreeSelectionExt, TreeModelExt
 };
 use relm::Widget;
@@ -60,33 +60,33 @@ impl Widget for Win {
         }
     }
 
-    fn update(&mut self, event: Msg) {
-        match event {
-            Msg::ApplyPort => {
-                // println!("Selected port is {}", self.port_selection.get_value());
-                let mut selected_port = "".to_string();
-                if let Some((list_model, iter)) = self.tree_view.get_selection().get_selected() {
-                    selected_port = list_model
-                        .get_value(&iter, 0)
-                        .get::<String>()
-                        .ok()
-                        .and_then(|value| value)
-                        .expect("get_value.get<String> failed");
-                }
-                let clicked_port = selected_port.split("hosted at ").last().unwrap().parse::<u16>().unwrap();
-                let lease = self.lease_time.get_value() as u32;
-                redirect_minecraft_to_a_port(clicked_port, self.port_selection.get_value() as u16, lease);
+fn update(&mut self, event: Msg) {
+    match event {
+        Msg::ApplyPort => {
+            // println!("Selected port is {}", self.port_selection.get_value());
+            let mut selected_port = "".to_string();
+            if let Some((list_model, iter)) = self.tree_view.get_selection().get_selected() {
+                selected_port = list_model
+                    .get_value(&iter, 0)
+                    .get::<String>()
+                    .ok()
+                    .and_then(|value| value)
+                    .expect("get_value.get<String> failed");
             }
-            Msg::Quit => gtk::main_quit(),
-            Msg::Refresh => {
-                self.model.ports = scan_ports();
-                self.model.public_address = get_public_address().unwrap();
-                self.model.local_address = IpAddr::V4(get_local_ip().unwrap());
-                self.update_port_list();
-            }
-            // _ => {}
+            let clicked_port = selected_port.split("hosted at ").last().unwrap().parse::<u16>().unwrap();
+            let lease = self.lease_time.get_value() as u32;
+            redirect_minecraft_to_a_port(clicked_port, self.port_selection.get_value() as u16, lease);
         }
+        Msg::Quit => gtk::main_quit(),
+        Msg::Refresh => {
+            self.model.ports = scan_ports();
+            self.model.public_address = get_public_address().unwrap();
+            self.model.local_address = IpAddr::V4(get_local_ip().unwrap());
+            self.update_port_list();
+        }
+        // _ => {}
     }
+}
 
     fn init_view(&mut self) {
         // Set up the window size
@@ -130,9 +130,10 @@ impl Widget for Win {
 
         // Add the parent directory
         // model.insert_with_values(None, &[0 as u32], &[&"Minecraft, hosted at {}"]);
-
+        let mut counter = 0;
         for p in data.ports {
-            model.insert_with_values(None, &[0 as u32], &[&format!("Minecraft, hosted at {}", p)]);
+            model.insert_with_values(Some(counter), &[0 as u32], &[&format!("Minecraft, hosted at {}", p)]);
+            counter+=1;
         }
         Ok(model)
     }
@@ -202,6 +203,7 @@ impl Widget for Win {
                 },
                 #[name="tree_view"]
                 gtk::TreeView{
+                    vexpand: true,
                 },
                 gtk::Button{
                     clicked => Msg::ApplyPort,
