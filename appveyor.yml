@@ -27,7 +27,7 @@ build_script:
   - cargo build --release
 
 after_build:
-  - cmd: >-
+  - cmd: |
       mkdir dist
       cd dist
       mkdir bin share lib

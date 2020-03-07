@@ -3,7 +3,7 @@ use crate::utils::*;
 use glib::types::StaticType;
 use gtk::prelude::GtkListStoreExtManual;
 use gtk::{
-    Align, ButtonExt, CellLayoutExt, EditableExt, GtkWindowExt, Inhibit, Justification, LabelExt,
+    Align, ButtonExt, CellLayoutExt, EditableExt, Inhibit, Justification, LabelExt,
     OrientableExt, Orientation::*, SpinButtonExt, TreeViewExt, WidgetExt, TreeSelectionExt, TreeModelExt
 };
 use relm::Widget;
