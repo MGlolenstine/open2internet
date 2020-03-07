@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 mod ui;
 mod utils;
 use utils::{get_local_ip, get_public_address, scan_ports};
