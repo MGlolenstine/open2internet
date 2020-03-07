@@ -1,6 +1,6 @@
 environment:
   global:
-    PROJECT_NAME: neovim-gtk-win64
+    PROJECT_NAME: open2internet
   matrix:
     - TARGET: x86_64-pc-windows-gnu
       RUST_VERSION: 1.38.0
