@@ -29,7 +29,7 @@ $ cargo run
 
 or you could just skip all of that and just type
 ```
-$ cargo install https://github.com/mglolenstine/open2internet
+$ cargo install --git https://github.com/mglolenstine/open2internet
 ```
 
 Current progress can be seen on our [board](https://boards.mglolenstine.xyz/b/YszTuok5GKCKiXoa7/open2internet).
