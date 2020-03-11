@@ -178,17 +178,25 @@ pub fn redirect_minecraft_to_a_port(mc_port: u16, wanted_port: u16, lease: u32) 
     // UPnP only works on local IPv4 addresses
     let local_addr = SocketAddrV4::new(local_addr, mc_port);
     match igd::search_gateway(Default::default()) {
-        Err(ref err) => println!("Error: {}", err),
+        Err(ref err) => println!("Error finding gateway: {}", err),
         Ok(gateway) => {
+            // println!(
+            //     "gateway.add_port({},{},{},{},{})",
+            //     igd::PortMappingProtocol::TCP,
+            //     wanted_port,
+            //     local_addr.to_string(),
+            //     lease,
+            //     "MinecraftLAN"
+            // );
             match gateway.add_port(
                 igd::PortMappingProtocol::TCP,
                 wanted_port,
                 local_addr.into(),
                 lease,
-                "Minecraft client PortForward",
+                "MinecraftLAN",
             ) {
                 Err(ref err) => {
-                    println!("There was an error! {}", err);
+                    println!("There was an error registering the port! {}", err);
                 }
                 Ok(_) => {
                     println!("It worked! Got port {}, hopefully!", wanted_port);

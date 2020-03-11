@@ -1,17 +1,14 @@
 #![windows_subsystem = "windows"]
-// mod ui;
 mod utils;
-mod rust_ui;
-// mod style;
+mod ui;
 
-// use std::net::IpAddr;
-// use std::sync::Arc;
-// use ui::O2IInfo;
-use rust_ui::Styling;
+use ui::Styling;
 use iced::Settings;
-use iced::{Sandbox};
-// use utils::{get_local_ip, get_public_address, scan_ports};
+use iced::Sandbox;
 
 fn main() {
-    Styling::run(Settings::default());
+    let mut settings = Settings::default();
+    settings.window.size = (800, 600);
+    settings.window.resizable = false;
+    Styling::run(settings);
 }

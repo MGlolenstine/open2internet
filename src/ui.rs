@@ -1,22 +1,59 @@
 use iced::{
     button, scrollable, slider, text_input, Align, Button, Checkbox, Column, Container, Element,
     Length, ProgressBar, Radio, Row, Sandbox, Scrollable, Slider, Space, Text, TextInput,
+    HorizontalAlignment, VerticalAlignment
 };
+use crate::utils::{redirect_minecraft_to_a_port, scan_ports};
 
 use style::Theme;
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+struct O2IInfo{
+    port_number: u32,
+    version: String,
+    more_info: String,
+}
+
+// impl Copy for O2IInfo{
+//     fn copy(&self) -> O2IInfo{
+//         O2IInfo{
+//             port_number: self.port_number,
+//             version: self.version.clone(),
+//             more_info: self.more_info.clone()
+//         }
+//     }
+// }
+
+impl Default for O2IInfo{
+    fn default() -> O2IInfo{
+        O2IInfo{
+            port_number: 0,
+            version: "Unknown".to_string(),
+            more_info: "None".to_string()
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct Styling {
     theme: style::Theme,
     lease_time: text_input::State,
     lease_time_value: String,
+    global_port_input: text_input::State,
+    global_port_input_value: String,
+    scroll: scrollable::State,
+    minecraft_ports: Vec<O2IInfo>,
     refresh_button: button::State,
+    open_port_button: button::State,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     RefreshPorts,
+    OpenPort,
+    ItemSelected(O2IInfo),
     LeaseTimeChanged(String),
+    GlobalPortChanged(String),
 }
 
 impl Sandbox for Styling {
@@ -35,73 +72,139 @@ impl Sandbox for Styling {
     fn update(&mut self, message: Message) {
         match message {
             Message::RefreshPorts => {
-                println!("You requested a port refresh and that's what you're getting!")
+                // println!("You requested a port refresh and that's what you're getting!")
+                let mut ports = scan_ports();
+                ports.sort();
+                self.minecraft_ports.clear();
+                println!("Found {} ports!", ports.len());
+                for port in ports {
+                    self.minecraft_ports.push(O2IInfo{port_number: port.into(), ..Default::default()})
+                    // self.scroll
+                }
+            },
+            Message::OpenPort => {
+                // println!("redirect_minecraft_to_a_port({}, {}, {})", 39695, self.global_port_input_value.parse::<u16>().unwrap(), self.lease_time_value.parse::<u32>().unwrap());
+                redirect_minecraft_to_a_port(39695, self.global_port_input_value.parse::<u16>().unwrap(), self.lease_time_value.parse::<u32>().unwrap())
             },
             Message::LeaseTimeChanged(v) => {
-                println!("Typed text {}", v)
-            }
+                if v.trim().parse::<i32>().is_ok() || v.trim() == "" {
+                    self.lease_time_value = v;
+                }
+            },
+            Message::GlobalPortChanged(v) => {
+                if v.trim().parse::<u16>().is_ok() || v.trim() == "" {
+                    self.global_port_input_value = v;
+                }
+            },
+            Message::ItemSelected(v) => {
+                
+            },
+            _ => {}
         }
     }
 
     fn view(&mut self) -> Element<Message> {
-        let text_input = Row::new().push(
+        let input_names = Column::new().push(
             Text::new("Lease time: ")
+            .horizontal_alignment(HorizontalAlignment::Left)
+            .vertical_alignment(VerticalAlignment::Center)
+            .height(Length::from(40))
+            .size(20)
         )
         .push(
+            Text::new("Public port: ")
+            .horizontal_alignment(HorizontalAlignment::Left)
+            .vertical_alignment(VerticalAlignment::Center)
+            .height(Length::from(40))
+            .size(20)
+        );
+        
+        let input_text = Column::new().push(
             TextInput::new(
                 &mut self.lease_time,
-                "Type something...",
+                "Lease time in seconds.",
                 &self.lease_time_value,
                 Message::LeaseTimeChanged,
             )
             .padding(10)
             .size(20)
             .style(self.theme),
-        );
-
-        let button = Button::new(&mut self.refresh_button, Text::new("Refresh"))
+        )
+        .push(
+            TextInput::new(
+                &mut self.global_port_input,
+                "Global port.",
+                &self.global_port_input_value,
+                Message::GlobalPortChanged,
+            )
             .padding(10)
-            .on_press(Message::RefreshPorts)
-            .style(self.theme);
+            .size(20)
+            .style(self.theme)
+        );
+        let number_inputs = Row::new().push(input_names).push(input_text);
 
-        // let slider = Slider::new(
-        //     &mut self.slider,
-        //     0.0..=100.0,
-        //     self.slider_value,
-        //     Message::SliderChanged,
-        // )
-        // .style(self.theme);
-
-        // let progress_bar = ProgressBar::new(0.0..=100.0, self.slider_value).style(self.theme);
-
-        // let scrollable = Scrollable::new(&mut self.scroll)
-        //     .height(Length::Units(100))
-        //     .style(self.theme)
-        //     .push(Text::new("Scroll me!"))
-        //     .push(Space::with_height(Length::Units(800)))
-        //     .push(Text::new("You did it!"));
-
-        // let checkbox = Checkbox::new(self.toggle_value, "Toggle me!", Message::CheckboxToggled)
-        //     .width(Length::Fill)
-        //     .style(self.theme);
-
-        // let content = Column::new()
-        //     .spacing(20)
-        //     .padding(20)
-        //     .max_width(600)
-        //     // .push(choose_theme)
-        //     .push(Row::new().spacing(10).push(text_input).push(button))
-
-            // .push(slider)
-            // .push(progress_bar)
-            // .push(
-            //     Row::new()
-            //         .spacing(10)
-            //         .align_items(Align::Center)
-            //         .push(scrollable)
-            //         .push(checkbox),
+        // println!("There's {} ports available!", self.minecraft_ports.len());
+        let scrollable: Row<Message> = if self.minecraft_ports.len() == 0 {
+            Row::new().push(Scrollable::new(&mut self.scroll)
+                .padding(5)
+                .push(
+                    Text::new("Collecting port data...").width(Length::Fill),
+                ))
+                // .push(Space::with_height(Length::Fill))
+                .height(Length::from(460))
+                .width(Length::Fill)
+        }else{
+            // let choose_theme = self.minecraft_ports.iter().fold(
+            //     Column::new().spacing(10).push(Text::new("Choose a port to forward:")),
+            //     |column, port| {
+            //         column.push(
+            //             Radio::new(
+            //                 *port,
+            //                 &format!("Minecraft opened at port {}", port.port_number),
+            //                 None,
+            //                 |v|{println!("Selected port {}", v.port_number)}
+            //                 // Message::ItemSelected(*port),
+            //             )
+            //             .style(self.theme),
+            //         )
+            //     },
             // );
-        let content = Column::new().spacing(10).push(text_input).push(button);
+            // Row::new().push(Scrollable::new(&mut self.scroll)
+            //     .padding(5)
+            //     .push(
+            //         choose_theme
+            //     ))
+            //     // .push(Space::with_height(Length::Fill))
+            //     .height(Length::from(460))
+            //     .width(Length::Fill)
+            let mut content: Column<Message> = Column::new();
+            for port in &self.minecraft_ports {
+                let text = Text::new(format!("Minecraft opened at port {}", port.port_number));
+                content = content.push(text);
+            }
+            Row::new().push(Scrollable::new(&mut self.scroll)
+                .padding(5)
+                .push(
+                    content
+                ))
+                .height(Length::from(460))
+                // .push(Space::with_height(Length::Fill))
+                .width(Length::Fill)
+        };
+
+        let buttons = Row::new().push(Button::new(&mut self.refresh_button, Text::new("Refresh"))
+                .padding(10)
+                .on_press(Message::RefreshPorts)
+                .style(self.theme)
+            )
+            .push(Space::with_width(Length::Fill))
+            .push(
+                Button::new(&mut self.open_port_button, Text::new("Open port"))
+                .padding(10)
+                .on_press(Message::OpenPort)
+                .style(self.theme)
+        );
+        let content = Column::new().spacing(10).push(number_inputs).push(scrollable).push(buttons);
         Container::new(content)
             .width(Length::Fill)
             .height(Length::Fill)
