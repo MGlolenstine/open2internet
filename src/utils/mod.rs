@@ -13,6 +13,7 @@ use std::iter::FromIterator;
 use std::ops::Range;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::fmt::Display;
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 const WANTED_PORT: u16 = 25565;
@@ -201,6 +202,39 @@ pub fn redirect_minecraft_to_a_port(mc_port: u16, wanted_port: u16, lease: u32) 
                 Ok(_) => {
                     println!("It worked! Got port {}, hopefully!", wanted_port);
                 }
+            }
+        }
+    }
+}
+
+pub struct IPAddr {
+    ip_addr: IpAddr,
+}
+
+impl IPAddr{
+    pub fn new_ipv4(a: Ipv4Addr) -> IPAddr{
+        IPAddr{
+            ip_addr: IpAddr::V4(a)
+        }
+    }
+
+    pub fn new(a: IpAddr) -> IPAddr{
+        IPAddr{
+            ip_addr: a
+        }
+    }
+}
+
+impl Display for IPAddr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.ip_addr {
+            IpAddr::V4(v) => {
+                let octets = v.octets();
+                std::write!(f, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+            },
+            IpAddr::V6(v) => {
+                let octets = v.octets();
+                std::write!(f, "{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}", octets[0], octets[1], octets[2], octets[3], octets[4], octets[5], octets[6], octets[7], octets[8], octets[9], octets[10], octets[11], octets[12], octets[13], octets[14], octets[15])
             }
         }
     }

@@ -1,60 +1,59 @@
-<html>
+<html">
     <head>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-        <link rel="stylesheet" href="css/skeleton.css">
+        <link href="https://stackpath.bootstrapcdn.com/bootswatch/4.4.1/darkly/bootstrap.min.css" rel="stylesheet" integrity="sha384-rCA2D+D9QXuP2TomtQwd+uP50EHjpafN+wruul0sXZzX/Da7Txn4tB9aLMZV4DZm" crossorigin="anonymous">
+        <!-- <link rel="stylesheet" href="css/bootstrap.min.css"> -->
+        <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> -->
+        <!-- <link rel="stylesheet" href="css/skeleton.css">
         <link rel="stylesheet" href="css/normalize.css">
-        <link rel="stylesheet" href="css/skeleton_dark.css">
+        <link rel="stylesheet" href="css/skeleton_dark.css"> -->
+        <style>
+            body {
+                padding: 5px;
+            }
+        </style>
+        <script>
+            function setup(){
+                external.invoke("refresh_ips");
+                console.log(userdata);
+            }
+
+            function register_port(){
+                console.log("Registering!")
+                external.invoke("register_port");
+            }
+            window.onload = setup;
+        </script>
     </head>
-    <style>
-        
-    </style>
     <body>
         <table>
             <tr>
-                <td>Lease time: </td>
-                <td><input type="number" value="3600"></input></td>
-                <td><i style="font-size:24px" class="fa">&#xf059;</i></td>
+                <td><label class="col-form-label">Public IP: </label></td>
+                <td><input id="public_ip" class="form-control" readonly value="Loading..."></td>
             </tr>
             <tr>
-                <td colspan="3"><span class=".comment" hidden>Time the port will last for in seconds; 0 - infinite</span></td>
+                <td><label class="col-form-label">Local IP: </label></td>
+                <td><input id="local_ip" class="form-control" readonly value="Loading..."></td>
             </tr>
             <tr>
-                <td>Public port: </td>
-                <td><input type="number" value="25565"></input></td>
-                <td><i style="font-size:24px" class="fa">&#xf059;</i></td>
+                <td><label class="col-form-label">Lease time: </label></td>
+                <td><input id="lease_time" type="number" value="3600" class="form-control" style="width: 100%;"></td>
+                <!-- <td><i style="font-size:24px" class="fa">&#xf059;</i></td> -->
             </tr>
             <tr>
-                <td colspan="3"><span class=".comment" hidden>Port number minecraft will be opened to globally</span></td>
+                <td><label class="col-form-label">Public port: </label></td>
+                <td><input id="global_port" type="number" value="25565" class="form-control" style="width: 100%;"></input></td>
+                <!-- <td><i style="font-size:24px" class="fa">&#xf059;</i></td> -->
             </tr>
             <tr>
-                <td><span>Minecraft instances:</span></td>
-                <td>
-                    <select name="minecraft_instance" id="minecraft_instance" style="width: 100%;">
-                        <option value="25565">Minecraft on port 25565</option>
-                    </select>
-                </td>
-                <td><i style="font-size:24px" class="fa">&#xf059;</i></td>
-            </tr>
-            <tr>
-                <!-- <table style="width:100%">
-                    <tr>
-                      <th>Firstname</th>
-                      <th>Lastname</th>
-                      <th>Age</th>
-                    </tr>
-                    <tr>
-                      <td>Jill</td>
-                      <td>Smith</td>
-                      <td>50</td>
-                    </tr>
-                    <tr>
-                      <td>Eve</td>
-                      <td>Jackson</td>
-                      <td>94</td>
-                    </tr>
-                  </table> -->
+                <td><label class="col-form-label">Minecraft Instance: </label></td>
+                <!-- <td><a style="font-size:24px" class="button fa" href="#instance_help">&#xf059;</a></td> -->
             </tr>
         </table>
-        <button style="float: right">Submit</button>
+        
+        <select style="width: 100%">
+            <option value="25565">Minecraft on port 25565</option>
+        </select>
+        <button style="float: right;margin-top: 5px;margin-bottom: 5px;" class="btn btn-primary" onclick="register_port()">Submit</button>
+        <!-- <a href="https://github.com/mglolenstine/open2internet" target="_blank">Check for updates</a> -->
     </body>
 </html>
