@@ -13,5 +13,6 @@ igd = "0.10.0"
 get_if_addrs = "0.5.3"
 # iced = "0.1.0-beta"
 # iced = "0.1.0-alpha"
-iced = {git="https://github.com/hecrj/iced"}
+# iced = {git="https://github.com/hecrj/iced"}
+web-view = "0.6.0"
 # tokio = { version = "0.2", features = ["full"] }

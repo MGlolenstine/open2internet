@@ -1,0 +1,60 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="css/skeleton.css">
+        <link rel="stylesheet" href="css/normalize.css">
+        <link rel="stylesheet" href="css/skeleton_dark.css">
+    </head>
+    <style>
+        
+    </style>
+    <body>
+        <table>
+            <tr>
+                <td>Lease time: </td>
+                <td><input type="number" value="3600"></input></td>
+                <td><i style="font-size:24px" class="fa">&#xf059;</i></td>
+            </tr>
+            <tr>
+                <td colspan="3"><span class=".comment" hidden>Time the port will last for in seconds; 0 - infinite</span></td>
+            </tr>
+            <tr>
+                <td>Public port: </td>
+                <td><input type="number" value="25565"></input></td>
+                <td><i style="font-size:24px" class="fa">&#xf059;</i></td>
+            </tr>
+            <tr>
+                <td colspan="3"><span class=".comment" hidden>Port number minecraft will be opened to globally</span></td>
+            </tr>
+            <tr>
+                <td><span>Minecraft instances:</span></td>
+                <td>
+                    <select name="minecraft_instance" id="minecraft_instance" style="width: 100%;">
+                        <option value="25565">Minecraft on port 25565</option>
+                    </select>
+                </td>
+                <td><i style="font-size:24px" class="fa">&#xf059;</i></td>
+            </tr>
+            <tr>
+                <!-- <table style="width:100%">
+                    <tr>
+                      <th>Firstname</th>
+                      <th>Lastname</th>
+                      <th>Age</th>
+                    </tr>
+                    <tr>
+                      <td>Jill</td>
+                      <td>Smith</td>
+                      <td>50</td>
+                    </tr>
+                    <tr>
+                      <td>Eve</td>
+                      <td>Jackson</td>
+                      <td>94</td>
+                    </tr>
+                  </table> -->
+            </tr>
+        </table>
+        <button style="float: right">Submit</button>
+    </body>
+</html>
