@@ -6,9 +6,11 @@ environment:
       RUST_VERSION: 1.38.0
 
 install:
-  - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
-  - rustup-init -yv --default-toolchain %channel% --default-host %target%
-  - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+  - SET RUST_URL=https://static.rust-lang.org/dist/rust-%RUST_VERSION%-%TARGET%.exe
+  - SET PATH=C:\Rust\bin;C:\msys64\mingw64\bin;%PATH%;C:\msys64\usr\bin
+  - SET PKG_CONFIG_PATH=C:\msys64\mingw64\lib\pkgconfig
+  - ps: Start-FileDownload $env:RUST_URL -FileName rust-dist.exe
+  - rust-dist.exe /VERYSILENT /NORESTART /COMPONENTS="Rustc,Gcc,Cargo,Std" /DIR="C:\Rust"
   - rustc -vV
   - cargo -vV
 
