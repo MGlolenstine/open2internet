@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 port_scanner = "0.1.5"
-glib = "0.9.3"
+# glib = "0.9.3"
 igd = "0.10.0"
 get_if_addrs = "0.5.3"
 # iced = "0.1.0-beta"
