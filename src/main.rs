@@ -11,7 +11,7 @@ fn main() {
     web_view::builder()
         .title("Open2Internet - Open Minecraft LAN")
         .content(Content::Html(html_content))
-        .size(640, 480)
+        .size(400, 200)
         .resizable(false)
         .debug(true)
         .user_data(())
