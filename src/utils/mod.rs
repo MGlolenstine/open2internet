@@ -76,7 +76,7 @@ pub fn scan_ports() -> Vec<u16> {
     return vec;
 }
 
-pub fn scan_ports_range(port_range: Range<u16>) -> Vec<u16> {
+fn scan_ports_range(port_range: Range<u16>) -> Vec<u16> {
     let mut open_ports = Vec::new();
     let (sender, receiver) = channel();
     for port in port_range.clone() {
@@ -99,7 +99,7 @@ pub fn scan_ports_range(port_range: Range<u16>) -> Vec<u16> {
 /*
     Check if the port at the local address is responding with correct data for Minecraft server.
 */
-pub fn is_minecraft(port: u16) -> bool {
+fn is_minecraft(port: u16) -> bool {
     let stream = TcpStream::connect_timeout(
         &SocketAddr::new(IpAddr::V4(LOCAL_IP), port),
         Duration::from_millis(10),
@@ -130,7 +130,7 @@ pub fn is_minecraft(port: u16) -> bool {
 /*
     Check if the returned buffer equals to Minecraft's response.
 */
-pub fn is_minecraft_response(buffer: &[u8]) -> bool {
+fn is_minecraft_response(buffer: &[u8]) -> bool {
     //let mc_server = [255, 0, 44, 0, 167, 0, 49, 0, 0];
     /*
         Protocol explanation
