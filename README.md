@@ -1,3 +1,6 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/jnsp3aqljkyuq0y5?svg=true)](https://ci.appveyor.com/project/MGlolenstine/open2internet)
+
+
 # Open 2 Internet
 This is a binary rust package, that allows you to redirect and automatically open ports to your "LAN shared" Minecraft single player world.
 
