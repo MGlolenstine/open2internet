@@ -21,7 +21,7 @@ fn main() {
         .content(Content::Html(html_content))
         .size(400, 300)
         .resizable(false)
-        .debug(true)
+        .debug(false)
         .user_data(())
         .invoke_handler(|webview, arg| {
             let data: Data = serde_json::from_str(arg).unwrap();
