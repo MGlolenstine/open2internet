@@ -233,8 +233,9 @@ impl Display for IPAddr {
                 std::write!(f, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
             },
             IpAddr::V6(v) => {
-                let octets = v.octets();
-                std::write!(f, "{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}", octets[0], octets[1], octets[2], octets[3], octets[4], octets[5], octets[6], octets[7], octets[8], octets[9], octets[10], octets[11], octets[12], octets[13], octets[14], octets[15])
+                std::write!(f, "IPv6 - Check IPv4 address!")
+                // let octets = v.octets();
+                // std::write!(f, "{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}", octets[0], octets[1], octets[2], octets[3], octets[4], octets[5], octets[6], octets[7], octets[8], octets[9], octets[10], octets[11], octets[12], octets[13], octets[14], octets[15])
             }
         }
     }
