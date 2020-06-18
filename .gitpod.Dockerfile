@@ -6,6 +6,7 @@ FROM gitpod/workspace-full-vnc
 #
 # More information: https://www.gitpod.io/docs/config-docker/
 USER gitpod
+ENV DEBIAN_FRONTEND=noninteractive
 RUN sudo apt update -y && sudo apt install -y \
 libsoup2.4-dev \
 libatk1.0-dev \
