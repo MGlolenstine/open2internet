@@ -9,4 +9,5 @@ USER gitpod
 RUN sudo apt update -y && sudo apt install -y \
 libsoup2.4-dev \
 libatk1.0-dev \
+libpango1.0-dev \
 && sudo apt clean -y && sudo rm -rf /var/lib/apt/lists
