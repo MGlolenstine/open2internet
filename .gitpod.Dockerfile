@@ -6,12 +6,11 @@ FROM gitpod/workspace-full-vnc
 #
 # More information: https://www.gitpod.io/docs/config-docker/
 USER gitpod
-ENV DEBIAN_FRONTEND=noninteractive
-COPY ./keyboard /etc/default/keyboard
-RUN sudo apt update -y && sudo apt install -y \
+RUN sudo apt-get update -y && DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends \
 libsoup2.4-dev \
 libatk1.0-dev \
 libpango1.0-dev \
 libgtk-3-dev \
-libwebkit2gtk-4.0-dev \
-&& sudo apt clean -y && sudo rm -rf /var/lib/apt/lists
+&& sudo apt-get clean -y && sudo rm -rf /var/lib/apt/lists
+
+RUN sudo apt-get update -y && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
