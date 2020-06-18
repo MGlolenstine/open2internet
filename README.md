@@ -1,3 +1,5 @@
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/MGlolenstine/open2internet)
+
 [![Build status](https://ci.appveyor.com/api/projects/status/jnsp3aqljkyuq0y5?svg=true)](https://ci.appveyor.com/project/MGlolenstine/open2internet)
 
 
