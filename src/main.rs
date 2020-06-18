@@ -32,14 +32,31 @@ fn main() {
                             IPAddr::new_ipv4(get_local_ip().expect("Cannot get local IP address!"))
                         ))
                         .expect("Setting the local ip into JS went wrong!");
-                webview
-                    .eval(&format!(
-                        "document.querySelector(\"#public_ip\").value = \"{}\";",
-                        IPAddr::new(
-                            get_public_address().expect("Cannot get public IP address!")
-                        )
-                    ))
-                    .expect("Setting the public ip into JS went wrong!");
+                if let Some(pa) = get_public_address() {
+                    webview
+                        .eval(&format!(
+                            "document.querySelector(\"#public_ip\").value = \"{}\";",
+                            IPAddr::new(
+                                pa
+                            )
+                        ))
+                        .expect("Setting the public ip into JS went wrong!");
+                }else{
+                    webview
+                        .eval(&format!(
+                            "document.querySelector(\"#public_ip\").value = \"{}\";",
+                            "Error: {Maybe IPv6}"
+                        ))
+                        .expect("Setting the public ip into JS went wrong!");
+                }
+                // webview
+                //     .eval(&format!(
+                //         "document.querySelector(\"#public_ip\").value = \"{}\";",
+                //         IPAddr::new(
+                //             get_public_address().expect("Cannot get public IP address!")
+                //         )
+                //     ))
+                //     .expect("Setting the public ip into JS went wrong!");
             }else if data.action == "register_port".to_string() {
                 redirect_minecraft_to_a_port(data.selected_port.unwrap(), data.port.unwrap(), data.lease_time.unwrap());
             }else if data.action == "refresh_ports".to_string() {
