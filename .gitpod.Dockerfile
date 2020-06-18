@@ -5,3 +5,7 @@ FROM gitpod/workspace-full-vnc
 # RUN brew install bastet
 #
 # More information: https://www.gitpod.io/docs/config-docker/
+RUN apt update && apt install \
+libsoup2.4-dev \
+libatk1.0-dev \
+&& apt clean && rm -rf /var/lib/apt/lists
