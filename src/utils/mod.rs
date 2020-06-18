@@ -4,10 +4,8 @@ use port_scanner::{local_ports_available_range, scan_port};
 use std::io::prelude::*;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
 use std::time::Duration;
-// use natpmp::*;
 use get_if_addrs::get_if_addrs;
 use igd::search_gateway;
-// use std::sync::{Arc, Mutex};
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::ops::Range;
@@ -165,10 +163,14 @@ fn is_minecraft_response(buffer: &[u8]) -> bool {
     Get host's external IP address, to give them IP for their friends to join.
 */
 pub fn get_public_address() -> Option<IpAddr> {
-    let gateway = search_gateway(Default::default()).unwrap();
-    let ip = IpAddr::V4(gateway.get_external_ip().unwrap());
-    return Some(ip);
-    // None
+    let gtw = search_gateway(Default::default());
+    if let Ok(gateway) = gtw {
+        let ip = IpAddr::V4(gateway.get_external_ip().unwrap());
+        return Some(ip);
+    }
+    println!("The IP is either IPv6 or some other error occured: {}", gtw.unwrap_err());
+    println!("Keep in mind, that having an IPv6 address as the server address, only people with IPv6 will be able to join!");
+    return None;
 }
 
 /*
@@ -232,7 +234,7 @@ impl Display for IPAddr {
                 let octets = v.octets();
                 std::write!(f, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
             },
-            IpAddr::V6(v) => {
+            IpAddr::V6(_v) => {
                 std::write!(f, "IPv6 - Check IPv4 address!")
                 // let octets = v.octets();
                 // std::write!(f, "{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}", octets[0], octets[1], octets[2], octets[3], octets[4], octets[5], octets[6], octets[7], octets[8], octets[9], octets[10], octets[11], octets[12], octets[13], octets[14], octets[15])
