@@ -6,7 +6,7 @@ FROM gitpod/workspace-full-vnc
 #
 # More information: https://www.gitpod.io/docs/config-docker/
 USER gitpod
-RUN sudo apt update && sudo apt install \
+RUN sudo apt update -y && sudo apt install -y \
 libsoup2.4-dev \
 libatk1.0-dev \
-&& sudo apt clean && sudo rm -rf /var/lib/apt/lists
+&& sudo apt clean -y && sudo rm -rf /var/lib/apt/lists
