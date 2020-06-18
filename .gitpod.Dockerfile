@@ -11,4 +11,5 @@ libsoup2.4-dev \
 libatk1.0-dev \
 libpango1.0-dev \
 libgtk-3-dev \
+libwebkit2gtk-4.0-dev \
 && sudo apt clean -y && sudo rm -rf /var/lib/apt/lists
