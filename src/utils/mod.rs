@@ -1,19 +1,17 @@
 #![allow(dead_code)]
 
-use port_scanner::{local_ports_available_range, scan_port};
-use std::io::prelude::*;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
-use std::time::Duration;
-// use natpmp::*;
 use get_if_addrs::get_if_addrs;
 use igd::search_gateway;
-// use std::sync::{Arc, Mutex};
+use port_scanner::{local_ports_available_range, scan_port};
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::io::prelude::*;
 use std::iter::FromIterator;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
 use std::ops::Range;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::time::Duration;
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 const WANTED_PORT: u16 = 25565;
@@ -165,10 +163,17 @@ fn is_minecraft_response(buffer: &[u8]) -> bool {
     Get host's external IP address, to give them IP for their friends to join.
 */
 pub fn get_public_address() -> Option<IpAddr> {
-    let gateway = search_gateway(Default::default()).unwrap();
-    let ip = IpAddr::V4(gateway.get_external_ip().unwrap());
-    return Some(ip);
-    // None
+    let gtw = search_gateway(Default::default());
+    if let Ok(gateway) = gtw {
+        let ip = IpAddr::V4(gateway.get_external_ip().unwrap());
+        return Some(ip);
+    }
+    println!(
+        "The IP is either IPv6 or some other error occured: {}",
+        gtw.unwrap_err()
+    );
+    println!("Keep in mind, that having an IPv6 address as the server address, only people with IPv6 will be able to join!");
+    return None;
 }
 
 /*
