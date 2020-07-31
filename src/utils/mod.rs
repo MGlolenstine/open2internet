@@ -9,11 +9,11 @@ use get_if_addrs::get_if_addrs;
 use igd::search_gateway;
 // use std::sync::{Arc, Mutex};
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::iter::FromIterator;
 use std::ops::Range;
 use std::sync::mpsc::channel;
 use std::thread;
-use std::fmt::Display;
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 const WANTED_PORT: u16 = 25565;
@@ -211,17 +211,15 @@ pub struct IPAddr {
     ip_addr: IpAddr,
 }
 
-impl IPAddr{
-    pub fn new_ipv4(a: Ipv4Addr) -> IPAddr{
-        IPAddr{
-            ip_addr: IpAddr::V4(a)
+impl IPAddr {
+    pub fn new_ipv4(a: Ipv4Addr) -> IPAddr {
+        IPAddr {
+            ip_addr: IpAddr::V4(a),
         }
     }
 
-    pub fn new(a: IpAddr) -> IPAddr{
-        IPAddr{
-            ip_addr: a
-        }
+    pub fn new(a: IpAddr) -> IPAddr {
+        IPAddr { ip_addr: a }
     }
 }
 
@@ -231,8 +229,8 @@ impl Display for IPAddr {
             IpAddr::V4(v) => {
                 let octets = v.octets();
                 std::write!(f, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
-            },
-            IpAddr::V6(v) => {
+            }
+            IpAddr::V6(_v) => {
                 std::write!(f, "IPv6 - Check IPv4 address!")
                 // let octets = v.octets();
                 // std::write!(f, "{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}:{:02X}{:02x}:{:02x}{:02x}", octets[0], octets[1], octets[2], octets[3], octets[4], octets[5], octets[6], octets[7], octets[8], octets[9], octets[10], octets[11], octets[12], octets[13], octets[14], octets[15])
