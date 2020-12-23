@@ -1,27 +1,80 @@
+
 environment:
   global:
-    PROJECT_NAME: open2internet
+    RUST_VERSION: stable
+
+    CRATE_NAME: open2internet
+
+  # TODO These are all the build jobs. Adjust as necessary. Comment out what you
+  # don't need
   matrix:
+    # MinGW
+    - TARGET: i686-pc-windows-gnu
     - TARGET: x86_64-pc-windows-gnu
-      RUST_VERSION: 1.44.0
+
+    # MSVC
+    - TARGET: i686-pc-windows-msvc
+    - TARGET: x86_64-pc-windows-msvc
+
+    # Testing other channels
+    - TARGET: x86_64-pc-windows-gnu
+      RUST_VERSION: nightly
+    - TARGET: x86_64-pc-windows-msvc
+      RUST_VERSION: nightly
 
 install:
-  - SET RUST_URL=https://static.rust-lang.org/dist/rust-%RUST_VERSION%-%TARGET%.exe
-  - SET PATH=C:\Rust\bin;C:\msys64\mingw64\bin;%PATH%;C:\msys64\usr\bin
-  - SET PKG_CONFIG_PATH=C:\msys64\mingw64\lib\pkgconfig
-  - ps: Start-FileDownload $env:RUST_URL -FileName rust-dist.exe
-  - rust-dist.exe /VERYSILENT /NORESTART /COMPONENTS="Rustc,Gcc,Cargo,Std" /DIR="C:\Rust"
-  - rustc -vV
-  - cargo -vV
-  - pacman --noconfirm -S mingw-w64-x86_64-binutils
-  - pacman --noconfirm -S mingw-w64-x86_64-gcc
+  - ps: >-
+      If ($env:TARGET -eq 'x86_64-pc-windows-gnu') {
+        $env:PATH += ';C:\msys64\mingw64\bin'
+      } ElseIf ($env:TARGET -eq 'i686-pc-windows-gnu') {
+        $env:PATH += ';C:\msys64\mingw32\bin'
+      }
+  - curl -sSf -o rustup-init.exe https://win.rustup.rs/
+  - rustup-init.exe -y --default-host %TARGET% --default-toolchain %RUST_VERSION%
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - rustc -Vv
+  - cargo -V
 
-build_script:
-  - cargo test
-  - cargo build --release
+test_script:
+  # we don't run the "test phase" when doing deploys
+  - if [%APPVEYOR_REPO_TAG%]==[false] (
+      cargo build --target %TARGET% &&
+      cargo build --target %TARGET% --release &&
+      cargo test --target %TARGET% &&
+      cargo test --target %TARGET% --release &&
+      cargo run --target %TARGET% &&
+      cargo run --target %TARGET% --release
+    )
 
-artifacts:
-  - path: target/release/open2internet.exe
-    name: mingw64-bin
+before_deploy:
+  - cargo rustc --target %TARGET% --release -- -C lto
 
-test: false
+artifact: '/.*\.zip/'
+  # TODO update `auth_token.secure`
+  # - Create a `public_repo` GitHub token. Go to: https://github.com/settings/tokens/new
+  # - Encrypt it. Go to https://ci.appveyor.com/tools/encrypt
+  # - Paste the output down here
+auth_token:
+  secure: +Z1YfXx2/YrBSsP4KETFr5PJJOvP9GtIfyhh3pFh+Ut3bTOZfg5QxVhmX7eYuQbA
+  description: ''
+  on:
+    # TODO Here you can pick which targets will generate binary releases
+    # In this example, there are some targets that are tested using the stable
+    # and nightly channels. This condition makes sure there is only one release
+    # for such targets and that's generated using the stable channel
+    RUST_VERSION: stable
+    appveyor_repo_tag: true
+  provider: GitHub
+
+cache:
+  - C:\Users\appveyor\.cargo\registry
+  - target
+
+branches:
+  only:
+    # Release tags
+    - /^v\d+\.\d+\.\d+.*$/
+    - master
+
+# Building is done in the test phase, so we disable Appveyor's build phase.
+build: false
