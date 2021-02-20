@@ -2,15 +2,12 @@
 
 use get_if_addrs::get_if_addrs;
 use igd::search_gateway;
-use port_scanner::{local_ports_available_range, scan_port};
-use std::collections::HashSet;
+use netstat::{get_sockets_info, AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo};
+use public_ip::ToResolver;
+use public_ip::{dns, http, BoxToResolver};
 use std::fmt::Display;
 use std::io::prelude::*;
-use std::iter::FromIterator;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
-use std::ops::Range;
-use std::sync::mpsc::channel;
-use std::thread;
 use std::time::Duration;
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
@@ -44,54 +41,33 @@ pub fn get_local_ip() -> Option<Ipv4Addr> {
     Scan ports in Minecraft range, to find the Minecraft one.
 */
 pub fn scan_ports() -> Vec<u16> {
-    let mut vec: Vec<u16> = Vec::new();
-    let all_ports = 10000..65535;
-    let free_ports = HashSet::<u16>::from_iter(
-        local_ports_available_range(all_ports.clone())
-            .iter()
-            .cloned(),
-    );
-    let taken_ports: Vec<u16> = all_ports.filter(|&i| !free_ports.contains(&i)).collect();
-    let (sender, receiver) = channel();
-    for open_port in taken_ports.clone() {
-        let local_sender = sender.clone();
-        thread::spawn(move || {
-            local_sender
-                .send(if is_minecraft(open_port) {
-                    Some(open_port)
-                } else {
-                    None
-                })
-                .unwrap()
-        });
-    }
-    for _ in &taken_ports {
-        let rec = receiver.recv().unwrap();
-        if rec.is_some() {
-            vec.push(rec.unwrap());
-        }
-    }
-    return vec;
+    let all_ports = get_used_ports();
+
+    let ports: Vec<_> = all_ports
+        .iter()
+        .map(|&v| if is_minecraft(v) { v } else { 0 })
+        .filter(|&x| x != 0)
+        .collect::<Vec<_>>();
+    return ports;
 }
 
-fn scan_ports_range(port_range: Range<u16>) -> Vec<u16> {
-    let mut open_ports = Vec::new();
-    let (sender, receiver) = channel();
-    for port in port_range.clone() {
-        let local_sender = sender.clone();
-        thread::spawn(move || {
-            local_sender
-                .send(if scan_port(port) { Some(port) } else { None })
-                .unwrap();
-        });
-    }
-    for _ in port_range {
-        let rec = receiver.recv().unwrap();
-        if rec.is_some() {
-            open_ports.push(rec.unwrap());
+pub fn get_used_ports() -> Vec<u16> {
+    let af_flags = AddressFamilyFlags::IPV4;
+    let proto_flags = ProtocolFlags::TCP;
+    let sockets_info = get_sockets_info(af_flags, proto_flags).unwrap();
+    let mut ports = vec![];
+    for si in sockets_info {
+        match si.protocol_socket_info {
+            ProtocolSocketInfo::Tcp(tcp_si) => match tcp_si.state {
+                netstat::TcpState::Listen => {
+                    ports.push(tcp_si.local_port);
+                }
+                _ => {}
+            },
+            _ => {}
         }
     }
-    open_ports
+    ports
 }
 
 /*
@@ -107,7 +83,7 @@ fn is_minecraft(port: u16) -> bool {
     }
     let mut stream = stream.unwrap();
     stream
-        .set_read_timeout(Some(Duration::from_millis(100)))
+        .set_read_timeout(Some(Duration::from_millis(10)))
         .unwrap();
     let req = [0xFE, 0x01];
     stream.write(&req).unwrap();
@@ -162,7 +138,7 @@ fn is_minecraft_response(buffer: &[u8]) -> bool {
 /*
     Get host's external IP address, to give them IP for their friends to join.
 */
-pub fn get_public_address() -> Option<IpAddr> {
+pub async fn get_public_address() -> Option<IpAddr> {
     let gtw = search_gateway(Default::default());
     if let Ok(gateway) = gtw {
         let ip = IpAddr::V4(gateway.get_external_ip().unwrap());
@@ -172,6 +148,18 @@ pub fn get_public_address() -> Option<IpAddr> {
         "The IP is either IPv6 or some other error occured: {}",
         gtw.unwrap_err()
     );
+    let resolver = vec![
+        BoxToResolver::new(dns::OPENDNS_RESOLVER),
+        BoxToResolver::new(http::HTTP_IPIFY_ORG_RESOLVER),
+    ]
+    .to_resolver();
+    // Attempt to get an IP address and print it
+    if let Some(ip) = public_ip::resolve_address(resolver).await {
+        println!("public ip address: {:?}", ip);
+        return Some(ip);
+    } else {
+        println!("couldn't get an IP address");
+    }
     println!("Keep in mind, that having an IPv6 address as the server address, only people with IPv6 will be able to join!");
     return None;
 }
