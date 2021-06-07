@@ -52,8 +52,8 @@ pub fn scan_ports() -> Vec<u16> {
 }
 
 pub fn get_used_ports() -> Vec<u16> {
-    let af_flags = AddressFamilyFlags::IPV4;
-    let proto_flags = ProtocolFlags::TCP;
+    let af_flags = AddressFamilyFlags::all();
+    let proto_flags = ProtocolFlags::all();
     let sockets_info = get_sockets_info(af_flags, proto_flags).unwrap();
     let mut ports = vec![];
     for si in sockets_info {
@@ -120,19 +120,20 @@ fn is_minecraft_response(buffer: &[u8]) -> bool {
             ...
         ]
     */
-    let mc_server = [
-        255, 0, 42, 0, 167, 0, 49, 0, 0, 0, 49, 0, 50, 0, 55, 0, 0, 0,
-    ];
-    for i in 0..buffer.len() {
-        if i == 2 {
-            continue;
-        }
-        let c = buffer[i];
-        if c.clone() != mc_server[i] {
-            return false;
-        }
-    }
-    true
+    // let mc_server = [
+    //     255, 0, 42, 0, 167, 0, 49, 0, 0, 0, 49, 0, 50, 0, 55, 0, 0, 0,
+    // ];
+    buffer[0] == 255 && buffer[1] == 0
+    // for i in 0..buffer.len() {
+    //     if i == 2 {
+    //         continue;
+    //     }
+    //     let c = buffer[i];
+    //     if c.clone() != mc_server[i] {
+    //         return false;
+    //     }
+    // }
+    // true
 }
 
 /*
