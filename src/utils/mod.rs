@@ -140,15 +140,16 @@ fn is_minecraft_response(buffer: &[u8]) -> bool {
     Get host's external IP address, to give them IP for their friends to join.
 */
 pub async fn get_public_address() -> Option<IpAddr> {
-    let gtw = search_gateway(Default::default());
-    if let Ok(gateway) = gtw {
-        let ip = IpAddr::V4(gateway.get_external_ip().unwrap());
-        return Some(ip);
-    }
-    println!(
-        "The IP is either IPv6 or some other error occured: {}",
-        gtw.unwrap_err()
-    );
+    // Startup on Windows takes ages if this isn't commented.
+    // let gtw = search_gateway(Default::default());
+    // if let Ok(gateway) = gtw {
+    //     let ip = IpAddr::V4(gateway.get_external_ip().unwrap());
+    //     return Some(ip);
+    // }
+    // println!(
+    //     "The IP is either IPv6 or some other error occured: {}",
+    //     gtw.unwrap_err()
+    // );
     let resolver = vec![
         BoxToResolver::new(dns::OPENDNS_RESOLVER),
         BoxToResolver::new(http::HTTP_IPIFY_ORG_RESOLVER),

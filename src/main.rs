@@ -1,6 +1,8 @@
 #![windows_subsystem = "windows"]
 mod utils;
 
+// TODO: Close ports once the program closes. https://docs.rs/igd/0.12.0/igd/struct.Gateway.html#method.remove_port
+
 use glib::Sender;
 use gtk::{prelude::*, Adjustment, StringObject};
 use relm4::Widget;
@@ -91,7 +93,6 @@ impl Widget<AppMsg, AppModel> for AppWidgets {
                 .unwrap()
                 .downcast::<StringObject>()
                 .unwrap();
-
             let child = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
             child.set_label(&item_label.string().as_str());
         });
@@ -200,7 +201,11 @@ impl AppUpdate<AppMsg> for AppModel {
             AppMsg::UpdatedLease(a) => self.lease_time = a as u32,
             AppMsg::UpdatedPort(a) => self.port = a as u16,
             AppMsg::SelectedPort(a) => {
-                self.selected_port = Some(*self.open_ports.get(a as usize).unwrap())
+                if let Some(a) = self.open_ports.get(a as usize) {
+                    self.selected_port = Some(*a);
+                } else {
+                    self.selected_port = None;
+                }
             }
         }
     }
