@@ -1,220 +1,265 @@
-#![windows_subsystem = "windows"]
-mod utils;
+use eframe::{egui, App, Frame};
+use egui::{
+    Align, CentralPanel, Color32, Context, CornerRadius, FontId, Layout, Margin, ScrollArea,
+};
+use utils::{redirect_minecraft_to_a_port, remove_minecraft_redirect, scan_ports};
 
-// TODO: Close ports once the program closes. https://docs.rs/igd/0.12.0/igd/struct.Gateway.html#method.remove_port
+pub mod error;
+pub mod utils;
 
-use glib::Sender;
-use gtk::{prelude::*, Adjustment, StringObject};
-use relm4::Widget;
-use relm4::{AppUpdate, RelmApp};
-use utils::scan_ports;
-use utils::*;
-
-struct AppWidgets {
-    main: gtk::ApplicationWindow,
-    ports: gtk::DropDown,
-}
-
-enum AppMsg {
-    RefreshPorts,
-    OpenPort,
-    UpdatedLease(i32),
-    UpdatedPort(i32),
-    SelectedPort(u32),
-}
-
-struct AppModel {
+// Define the structure for an entry
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct Entry {
+    id: u32, // Unique ID for each entry
+    title: String,
     port: u16,
-    open_ports: Vec<u16>,
-    lease_time: u32,
-    selected_port: Option<u16>,
-    public_ip: String,
+    redirected_port: Option<u16>,
+}
+
+impl From<u16> for Entry {
+    fn from(value: u16) -> Self {
+        Entry {
+            id: value as u32,
+            title: "Minecraft game".to_string(),
+            port: value,
+            redirected_port: None,
+        }
+    }
+}
+
+// Main application struct
+struct MyApp {
+    available_entries: Vec<Entry>,
+    enabled_entries: Vec<Entry>,
+    port_input: String,
+    selected_available_id: Option<u32>,
+    selected_enabled_id: Option<u32>,
+    error_string: String,
     local_ip: String,
+    public_ip: String,
 }
 
-impl Widget<AppMsg, AppModel> for AppWidgets {
-    type Root = gtk::ApplicationWindow;
-
-    fn init_view(sender: Sender<AppMsg>, model: &AppModel) -> Self {
-        let main = gtk::ApplicationWindowBuilder::new().build();
-        let vbox = gtk::BoxBuilder::new()
-            .orientation(gtk::Orientation::Vertical)
-            .spacing(10)
-            .margin_end(5)
-            .margin_top(5)
-            .hexpand(false)
-            .build();
-        let grid = gtk::Grid::new();
-        let public = gtk::Label::new(Some("Public IP"));
-        let public_entry = gtk::Entry::new();
-        public_entry.set_editable(false);
-        public_entry.set_text(&model.public_ip);
-        grid.attach(&public, 0, 0, 1, 1);
-        grid.attach(&public_entry, 1, 0, 1, 1);
-
-        let local = gtk::Label::new(Some("Private IP"));
-        let local_entry = gtk::Entry::new();
-        local_entry.set_editable(false);
-        local_entry.set_text(&model.local_ip);
-        grid.attach(&local, 0, 1, 1, 1);
-        grid.attach(&local_entry, 1, 1, 1, 1);
-
-        let lease = gtk::Label::new(Some("Lease time"));
-        let adj = Adjustment::new(3600.0, 0.0, 10000000.0, 1.0, 10.0, 10.0);
-        let lease_entry = gtk::SpinButton::new(Some(&adj), 1.0, 0);
-        let sender2 = sender.clone();
-        lease_entry.connect_changed(move |a| {
-            sender2
-                .send(AppMsg::UpdatedLease(a.value_as_int()))
-                .unwrap();
-        });
-        grid.attach(&lease, 0, 2, 1, 1);
-        grid.attach(&lease_entry, 1, 2, 1, 1);
-
-        let external_port = gtk::Label::new(Some("External port"));
-        let adj = Adjustment::new(25565.0, 0.0, 10000000.0, 1.0, 10.0, 10.0);
-        let external_port_entry = gtk::SpinButton::new(Some(&adj), 1.0, 0);
-        let sender2 = sender.clone();
-        external_port_entry.connect_changed(move |a| {
-            sender2.send(AppMsg::UpdatedPort(a.value_as_int())).unwrap();
-        });
-        grid.attach(&external_port, 0, 3, 1, 1);
-        grid.attach(&external_port_entry, 1, 3, 1, 1);
-
-        let internal_port = gtk::Label::new(Some("Internal port"));
-        let factory = gtk::SignalListItemFactory::new();
-        factory.connect_setup(move |_factory, item| {
-            let row = gtk::Label::new(Some(&format!("{}", item)));
-            item.set_child(Some(&row));
-        });
-        factory.connect_bind(move |_factory, list_item| {
-            let item_label = list_item
-                .item()
-                .unwrap()
-                .downcast::<StringObject>()
-                .unwrap();
-            let child = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
-            child.set_label(&item_label.string().as_str());
-        });
-
-        let internal_port_entry = gtk::DropDownBuilder::new().list_factory(&factory).build();
-        let mut store = vec![];
-        model.open_ports.iter().for_each(|a| {
-            store.push(format!("{}", a));
-        });
-        let mut vec = vec![];
-        for s in store.iter() {
-            vec.push(s.as_str());
+impl Default for MyApp {
+    fn default() -> Self {
+        let initial_entries = scan_ports()
+            .unwrap_or_default()
+            .into_iter()
+            .map(Entry::from)
+            .collect();
+        Self {
+            available_entries: initial_entries,
+            enabled_entries: Vec::new(),
+            port_input: "8080".to_string(),
+            selected_available_id: None,
+            selected_enabled_id: None,
+            error_string: String::new(),
+            local_ip: utils::get_local_ip()
+                .map(|a| a.to_string())
+                .unwrap_or_else(|_| "N/A".to_string()),
+            public_ip: utils::get_public_address()
+                .map(|a| a.to_string())
+                .unwrap_or_else(|_| "N/A".to_string()),
         }
-        let store = gtk::StringList::new(&vec[..]);
-        internal_port_entry.set_model(Some(&store));
-        let sender2 = sender.clone();
-        internal_port_entry.connect_selected_item_notify(move |a| {
-            sender2.send(AppMsg::SelectedPort(a.selected())).unwrap();
-        });
-        internal_port_entry.model();
-        grid.attach(&internal_port, 0, 4, 1, 1);
-        grid.attach(&internal_port_entry, 1, 4, 1, 1);
-
-        vbox.append(&grid);
-        let buttons = gtk::BoxBuilder::new()
-            .orientation(gtk::Orientation::Horizontal)
-            .spacing(10)
-            .margin_end(5)
-            .margin_top(5)
-            .build();
-        let refresh = gtk::ButtonBuilder::new().label("Refresh ports").build();
-
-        let sender2 = sender.clone();
-        refresh.connect_clicked(move |_button| {
-            sender2.send(AppMsg::RefreshPorts).unwrap();
-        });
-        let open = gtk::ButtonBuilder::new().label("Open port").build();
-
-        let sender2 = sender.clone();
-        open.connect_clicked(move |_button| {
-            sender2.send(AppMsg::OpenPort).unwrap();
-        });
-
-        buttons.append(&refresh);
-        buttons.append(&open);
-        vbox.append(&buttons);
-
-        main.set_child(Some(&vbox));
-
-        AppWidgets {
-            main,
-            ports: internal_port_entry,
-        }
-    }
-
-    fn root_widget(&self) -> gtk::ApplicationWindow {
-        self.main.clone()
     }
 }
 
-impl AppUpdate<AppMsg> for AppModel {
-    type Widgets = AppWidgets;
+impl App for MyApp {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        CentralPanel::default().show(ctx, |ui| {
+            // General styling
+            let heading_font = FontId::proportional(18.0);
+            let field_min_width = 180.0; // Min width for IP display "fields"
 
-    fn init_model() -> Self {
-        let public_ip = futures::executor::block_on(get_public_address());
-        AppModel {
-            port: 25565,
-            open_ports: scan_ports(),
-            lease_time: 3600,
-            selected_port: None,
-            public_ip: if let Some(ip) = public_ip {
-                ip.to_string()
-            } else {
-                "No public IP O_o".to_owned()
-            },
-            local_ip: if let Some(ip) = get_local_ip() {
-                ip.to_string()
-            } else {
-                "No local IP O_o".to_owned()
-            },
-        }
-    }
+            // --- Network Information Section ---
+            ui.heading("Network Information");
+            ui.add_space(5.0);
 
-    fn update(&mut self, msg: AppMsg, widgets: &Self::Widgets) {
-        match msg {
-            AppMsg::OpenPort => {
-                redirect_minecraft_to_a_port(
-                    self.selected_port.unwrap_or(0),
-                    self.port,
-                    self.lease_time,
-                );
-            }
-            AppMsg::RefreshPorts => {
-                self.open_ports = dbg!(scan_ports());
-                let mut store = vec![];
-                self.open_ports.iter().for_each(|a| {
-                    store.push(format!("{}", a));
+            // Local IP display
+            ui.horizontal(|ui| {
+                ui.label("Local IP:");
+                ui.add_space(4.0);
+                egui::Frame::default()
+                    .inner_margin(Margin::symmetric(6, 4)) // Corrected Margin arguments to i8
+                    .corner_radius(CornerRadius::same(4)) // Corrected to CornerRadius and u8 argument
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .show(ui, |ui| {
+                        ui.set_min_width(field_min_width);
+                        ui.label(&self.local_ip);
+                    });
+                if ui.button("📋").on_hover_text("Copy Local IP").clicked() {
+                    ctx.copy_text(self.local_ip.clone());
+                }
+            });
+            ui.add_space(5.0);
+
+            // Public IP display
+            ui.horizontal(|ui| {
+                ui.label("Public IP:");
+                ui.add_space(4.0);
+                egui::Frame::default()
+                    .inner_margin(Margin::symmetric(6, 4)) // Corrected Margin arguments to i8
+                    .corner_radius(CornerRadius::same(4)) // Corrected to CornerRadius and u8 argument
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .show(ui, |ui| {
+                        ui.set_min_width(field_min_width);
+                        ui.label(&self.public_ip);
+                    });
+                if ui.button("📋").on_hover_text("Copy Public IP").clicked() {
+                    ctx.copy_text(self.public_ip.clone());
+                }
+            });
+
+            ui.add_space(15.0);
+            ui.separator();
+            ui.add_space(10.0);
+
+            // --- Available Entries Section ---
+            ui.label(egui::RichText::new("Available Entries").font(heading_font.clone()));
+            ScrollArea::vertical()
+                .id_salt("available_entries_scroll")
+                .max_height(180.0)
+                .show(ui, |ui| {
+                    for entry in &self.available_entries {
+                        let label = format!("{} ({})", entry.title, entry.port);
+                        if ui
+                            .selectable_label(self.selected_available_id == Some(entry.id), label)
+                            .clicked()
+                        {
+                            self.selected_available_id =
+                                if self.selected_available_id == Some(entry.id) {
+                                    None
+                                } else {
+                                    Some(entry.id)
+                                };
+                            if self.selected_available_id.is_some() {
+                                self.selected_enabled_id = None;
+                            }
+                        }
+                    }
                 });
-                let mut vec = vec![];
-                for s in store.iter() {
-                    vec.push(s.as_str());
-                }
-                let store = gtk::StringList::new(&vec[..]);
-                widgets.ports.set_model(Some(&store));
-            }
-            AppMsg::UpdatedLease(a) => self.lease_time = a as u32,
-            AppMsg::UpdatedPort(a) => self.port = a as u16,
-            AppMsg::SelectedPort(a) => {
-                if let Some(a) = self.open_ports.get(a as usize) {
-                    self.selected_port = Some(*a);
-                } else {
-                    self.selected_port = None;
-                }
-            }
-        }
-    }
 
-    fn view(&self, _widgets: &mut Self::Widgets) {}
+            ui.add_space(10.0);
+
+            // --- Port Input Section ---
+            ui.horizontal(|ui| {
+                ui.label("Port:");
+                ui.add_sized(
+                    [100.0, 20.0],
+                    egui::TextEdit::singleline(&mut self.port_input).id_source("port_input_field"),
+                );
+            });
+
+            ui.add_space(10.0);
+
+            // --- Enabled Entries Section ---
+            ui.label(egui::RichText::new("Enabled Entries").font(heading_font.clone()));
+            ScrollArea::vertical()
+                .id_salt("enabled_entries_scroll")
+                .max_height(180.0)
+                .show(ui, |ui| {
+                    for entry in &self.enabled_entries {
+                        let label = format!("{} ({})", entry.title, entry.port);
+                        if ui
+                            .selectable_label(self.selected_enabled_id == Some(entry.id), label)
+                            .clicked()
+                        {
+                            self.selected_enabled_id = if self.selected_enabled_id == Some(entry.id)
+                            {
+                                None
+                            } else {
+                                Some(entry.id)
+                            };
+                            if self.selected_enabled_id.is_some() {
+                                self.selected_available_id = None;
+                            }
+                        }
+                    }
+                });
+
+            ui.add_space(15.0);
+
+            // --- Enable/Disable Button Section ---
+            let (button_text, button_is_enabled) = if self.selected_available_id.is_some() {
+                ("Enable Selected", true)
+            } else if self.selected_enabled_id.is_some() {
+                ("Disable Selected", true)
+            } else {
+                ("Select an item", false)
+            };
+
+            ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                if ui
+                    .add_enabled(
+                        button_is_enabled,
+                        egui::Button::new(button_text).min_size(egui::vec2(180.0, 30.0)),
+                    )
+                    .on_hover_text_at_pointer("Click to move the selected item between lists")
+                    .clicked()
+                {
+                    if let Some(id_to_enable) = self.selected_available_id.take() {
+                        if let Some(index) = self
+                            .available_entries
+                            .iter()
+                            .position(|e| e.id == id_to_enable)
+                        {
+                            let mut entry_to_enable = self.available_entries.remove(index);
+                            let Ok(external_port) = self.port_input.parse::<u16>() else {
+                                self.error_string = "Invalid port detected!".to_string();
+                                self.available_entries.insert(index, entry_to_enable);
+                                return;
+                            };
+                            if let Err(e) = redirect_minecraft_to_a_port(
+                                entry_to_enable.port,
+                                external_port,
+                                3600,
+                            ) {
+                                self.error_string = e.to_string();
+                                self.available_entries.insert(index, entry_to_enable);
+                                return;
+                            }
+                            entry_to_enable.redirected_port = Some(external_port);
+                            self.port_input = String::new();
+                            self.enabled_entries.push(entry_to_enable);
+                            self.enabled_entries.sort_by_key(|e| e.id);
+                        }
+                    } else if let Some(id_to_disable) = self.selected_enabled_id.take() {
+                        if let Some(index) = self
+                            .enabled_entries
+                            .iter()
+                            .position(|e| e.id == id_to_disable)
+                        {
+                            let mut entry_to_disable = self.enabled_entries.remove(index);
+                            if let Err(e) =
+                                remove_minecraft_redirect(entry_to_disable.redirected_port.unwrap())
+                            {
+                                self.error_string = e.to_string();
+                                self.enabled_entries.insert(index, entry_to_disable);
+                                return;
+                            }
+                            entry_to_disable.redirected_port = None;
+                            self.available_entries.push(entry_to_disable);
+                            self.available_entries.sort_by_key(|e| e.id);
+                        }
+                    }
+                }
+            });
+            ui.label(
+                egui::RichText::new(self.error_string.clone())
+                    .font(heading_font.clone())
+                    .color(Color32::RED),
+            );
+        });
+    }
 }
 
-fn main() {
-    gtk::init().unwrap();
-    let relm: RelmApp<AppWidgets, AppModel, AppMsg> = RelmApp::create();
-    relm.run();
+fn main() -> Result<(), eframe::Error> {
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_inner_size([600.0, 400.0]),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "Open 2 Internet",
+        options,
+        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+    )
 }
